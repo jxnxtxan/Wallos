@@ -94,6 +94,20 @@ function loadLedger() {
     .catch(() => showErrorMessage(translate("error")));
 }
 
+function loadLedgerIfRangeComplete() {
+  const scope = document.querySelector("#ledger-scope").value;
+  if (scope !== "range") {
+    loadLedger();
+    return;
+  }
+
+  const start = document.querySelector("#ledger-start").value;
+  const end = document.querySelector("#ledger-end").value;
+  if (start && end) {
+    loadLedger();
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   const scope = document.querySelector("#ledger-scope");
   const rangeFields = document.querySelectorAll(".ledger-range");
@@ -101,14 +115,15 @@ document.addEventListener("DOMContentLoaded", () => {
   scope.addEventListener("change", () => {
     if (scope.value === "range") {
       rangeFields.forEach((el) => el.classList.remove("hide"));
-    } else {
-      rangeFields.forEach((el) => el.classList.add("hide"));
+      return;
     }
+
+    rangeFields.forEach((el) => el.classList.add("hide"));
     loadLedger();
   });
 
   document.querySelector("#ledger-refresh").addEventListener("click", loadLedger);
-  document.querySelector("#ledger-start").addEventListener("change", loadLedger);
-  document.querySelector("#ledger-end").addEventListener("change", loadLedger);
+  document.querySelector("#ledger-start").addEventListener("change", loadLedgerIfRangeComplete);
+  document.querySelector("#ledger-end").addEventListener("change", loadLedgerIfRangeComplete);
   loadLedger();
 });
