@@ -64,9 +64,13 @@ function openIncomeForEdit(item, type) {
 function renderIncomeRows(entries, recurring) {
   const list = document.querySelector("#income-list");
   const rows = [];
+  const metaChips = (parts) => parts
+    .filter(Boolean)
+    .map((part) => `<span class="income-meta-chip">${part}</span>`)
+    .join("");
 
   entries.forEach((entry) => {
-    const entryMeta = [entry.income_date, entry.subscription_name].filter(Boolean).join(" | ");
+    const entryMeta = metaChips([entry.income_date, entry.subscription_name]);
     rows.push(`
       <div class="income-row">
         <div class="income-row-header">
@@ -83,11 +87,11 @@ function renderIncomeRows(entries, recurring) {
   });
 
   recurring.forEach((item) => {
-    const recurringMeta = [
+    const recurringMeta = metaChips([
       `${translate("recurring_income")}: ${item.frequency} ${cycleLabel(item.cycle)}`,
       item.start_date && item.end_date ? `${item.start_date} - ${item.end_date}` : item.start_date,
       item.subscription_name
-    ].filter(Boolean).join(" | ");
+    ]);
     rows.push(`
       <div class="income-row recurring">
         <div class="income-row-header">

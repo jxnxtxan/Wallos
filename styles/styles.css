@@ -1707,7 +1707,7 @@ button.dark-theme-button i {
 
 .income-layout {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 16px;
 }
 
@@ -1780,6 +1780,21 @@ button.dark-theme-button i {
   line-height: 1.35;
   margin-bottom: 8px;
   overflow-wrap: anywhere;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.income-meta-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--box-border-color);
+  background: rgba(var(--main-color-rgb), 0.08);
+  color: #4a4a4a;
+  font-size: 0.9rem;
+  line-height: 1.2;
 }
 
 .income-actions {
