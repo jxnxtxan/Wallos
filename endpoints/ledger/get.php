@@ -12,7 +12,7 @@ $scope = $_GET['scope'] ?? 'month';
 $startDate = $_GET['start_date'] ?? null;
 $endDate = $_GET['end_date'] ?? null;
 
-if (!in_array($scope, ['month', 'range', 'all'])) {
+if (!in_array($scope, ['month', 'year', 'range', 'all'])) {
     $scope = 'month';
 }
 

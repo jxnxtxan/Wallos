@@ -31,18 +31,33 @@ function renderLedgerMembers(ledger) {
   const target = document.querySelector("#ledger-members");
   const cards = ledger.members.map((member) => {
     const breakdown = member.subscription_breakdown.length > 0
-      ? `<ul>${member.subscription_breakdown.map((item) => `<li>${item.subscription_name}: ${ledgerFormat(item.monthly_amount, ledger.main_currency_code, ledger.main_currency_symbol)}</li>`).join("")}</ul>`
+      ? `<ul class="ledger-breakdown-list">${member.subscription_breakdown.map((item) => `
+          <li class="ledger-breakdown-item">
+            <span class="ledger-breakdown-name">${item.subscription_name}</span>
+            <strong class="ledger-breakdown-amount">${ledgerFormat(item.monthly_amount, ledger.main_currency_code, ledger.main_currency_symbol)}</strong>
+          </li>
+        `).join("")}</ul>`
       : `<div class="muted">${translate("no_subscriptions_yet")}</div>`;
     const diffClass = member.net_difference >= 0 ? "positive" : "negative";
     const diffText = member.net_difference >= 0 ? translate("receives") : translate("owes");
     return `
       <section class="box ledger-card">
-        <header><h3>${member.name}</h3></header>
+        <header class="ledger-card-header"><h3>${member.name}</h3></header>
         <div class="ledger-breakdown">${breakdown}</div>
         <div class="ledger-totals">
-          <div>${translate("expenses_total")}: <strong>${ledgerFormat(member.subscriptions_total, ledger.main_currency_code, ledger.main_currency_symbol)}</strong></div>
-          <div>${translate("income_total")}: <strong>${ledgerFormat(member.income_total, ledger.main_currency_code, ledger.main_currency_symbol)}</strong></div>
-          <div class="${diffClass}">${translate("difference")}: <strong>${ledgerFormat(member.net_difference, ledger.main_currency_code, ledger.main_currency_symbol)}</strong> <span class="ledger-diff-label">${diffText}</span></div>
+          <div class="ledger-total-row">
+            <span>${translate("expenses_total")}</span>
+            <strong>${ledgerFormat(member.subscriptions_total, ledger.main_currency_code, ledger.main_currency_symbol)}</strong>
+          </div>
+          <div class="ledger-total-row">
+            <span>${translate("income_total")}</span>
+            <strong>${ledgerFormat(member.income_total, ledger.main_currency_code, ledger.main_currency_symbol)}</strong>
+          </div>
+          <div class="ledger-total-row ledger-total-diff ${diffClass}">
+            <span>${translate("difference")}</span>
+            <strong>${ledgerFormat(member.net_difference, ledger.main_currency_code, ledger.main_currency_symbol)}</strong>
+            <span class="ledger-diff-label">${diffText}</span>
+          </div>
         </div>
       </section>
     `;

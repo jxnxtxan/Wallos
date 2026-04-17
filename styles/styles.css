@@ -1744,18 +1744,52 @@ button.dark-theme-button i {
 }
 
 .income-row {
-  border-bottom: 1px solid var(--box-border-color);
-  padding: 10px 0;
+  border: 1px solid var(--box-border-color);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+  background: var(--box-background-color);
 }
 
 .income-row:last-child {
-  border-bottom: 0;
+  margin-bottom: 0;
+}
+
+.income-row-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.income-row-name {
+  font-size: 1.08rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.income-row-amount {
+  white-space: nowrap;
+  font-weight: 700;
+  color: var(--main-color);
+}
+
+.income-row-meta {
+  color: #666;
+  line-height: 1.35;
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
 }
 
 .income-actions {
-  margin-top: 8px;
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+.income-actions .button {
+  min-width: 180px;
 }
 
 .ledger-summary {
@@ -1763,29 +1797,83 @@ button.dark-theme-button i {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-top: 12px;
+  margin-bottom: 12px;
 }
 
 #ledger-members {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  margin-top: 12px;
 }
 
-.ledger-card .ledger-breakdown ul {
-  margin: 8px 0;
-  padding-left: 18px;
+.ledger-card {
+  padding: 14px;
+}
+
+.ledger-card-header {
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--box-border-color);
+}
+
+.ledger-card-header h3 {
+  margin: 0;
+}
+
+.ledger-breakdown-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ledger-breakdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--box-border-color);
+  border-radius: 8px;
+  background: rgba(var(--main-color-rgb), 0.04);
+}
+
+.ledger-breakdown-name {
+  overflow-wrap: anywhere;
+}
+
+.ledger-breakdown-amount {
+  white-space: nowrap;
+  color: var(--main-color);
 }
 
 .ledger-card .ledger-totals {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+}
+
+.ledger-total-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 0;
+  border-top: 1px dashed var(--box-border-color);
+}
+
+.ledger-total-row:first-child {
+  border-top: 1px solid var(--box-border-color);
+}
+
+.ledger-total-diff strong {
+  font-size: 1.02rem;
 }
 
 .ledger-diff-label {
   display: inline-block;
-  margin-left: 6px;
   font-size: 12px;
   padding: 2px 6px;
   border-radius: 999px;
@@ -1803,6 +1891,17 @@ button.dark-theme-button i {
 @media (max-width: 900px) {
   .income-layout {
     grid-template-columns: 1fr;
+  }
+
+  .income-row-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .income-actions .button {
+    flex: 1;
+    min-width: 140px;
   }
 
   .ledger-summary,

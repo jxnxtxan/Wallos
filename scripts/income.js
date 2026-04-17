@@ -66,10 +66,14 @@ function renderIncomeRows(entries, recurring) {
   const rows = [];
 
   entries.forEach((entry) => {
+    const entryMeta = [entry.income_date, entry.subscription_name].filter(Boolean).join(" | ");
     rows.push(`
       <div class="income-row">
-        <div><strong>${entry.household_name}</strong> - ${formatMoney(entry.amount, entry.currency_code)}</div>
-        <div>${entry.income_date}${entry.subscription_name ? ` | ${entry.subscription_name}` : ""}</div>
+        <div class="income-row-header">
+          <strong class="income-row-name">${entry.household_name}</strong>
+          <span class="income-row-amount">${formatMoney(entry.amount, entry.currency_code)}</span>
+        </div>
+        <div class="income-row-meta">${entryMeta}</div>
         <div class="income-actions">
           <button type="button" class="button secondary-button thin" onclick='openIncomeForEdit(${JSON.stringify(entry)}, "entry")'>${translate("edit_subscription")}</button>
           <button type="button" class="button warning-button thin" onclick='deleteIncome(${entry.id}, "entry")'>${translate("delete")}</button>
@@ -79,10 +83,18 @@ function renderIncomeRows(entries, recurring) {
   });
 
   recurring.forEach((item) => {
+    const recurringMeta = [
+      `${translate("recurring_income")}: ${item.frequency} ${cycleLabel(item.cycle)}`,
+      item.start_date && item.end_date ? `${item.start_date} - ${item.end_date}` : item.start_date,
+      item.subscription_name
+    ].filter(Boolean).join(" | ");
     rows.push(`
       <div class="income-row recurring">
-        <div><strong>${item.household_name}</strong> - ${formatMoney(item.amount, item.currency_code)}</div>
-        <div>${translate("recurring_income")}: ${item.frequency} ${cycleLabel(item.cycle)} | ${item.start_date}${item.end_date ? ` - ${item.end_date}` : ""}${item.subscription_name ? ` | ${item.subscription_name}` : ""}</div>
+        <div class="income-row-header">
+          <strong class="income-row-name">${item.household_name}</strong>
+          <span class="income-row-amount">${formatMoney(item.amount, item.currency_code)}</span>
+        </div>
+        <div class="income-row-meta">${recurringMeta}</div>
         <div class="income-actions">
           <button type="button" class="button secondary-button thin" onclick='openIncomeForEdit(${JSON.stringify(item)}, "recurring")'>${translate("edit_subscription")}</button>
           <button type="button" class="button warning-button thin" onclick='deleteIncome(${item.id}, "recurring")'>${translate("delete")}</button>

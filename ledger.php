@@ -9,8 +9,9 @@ require_once 'includes/header.php';
     <div class="form-group-inline">
       <select id="ledger-scope">
         <option value="month"><?= translate('current_month', $i18n) ?></option>
+        <option value="year"><?= translate('current_year', $i18n) ?></option>
         <option value="range"><?= translate('custom_range', $i18n) ?></option>
-        <option value="all"><?= translate('history', $i18n) ?></option>
+        <option value="all"><?= translate('total_period', $i18n) ?></option>
       </select>
       <input type="date" id="ledger-start" class="ledger-range hide">
       <input type="date" id="ledger-end" class="ledger-range hide">

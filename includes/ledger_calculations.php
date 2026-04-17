@@ -50,6 +50,11 @@ function ledgerGetRange($scope, $startDate, $endDate)
         $end = new DateTime($today->format('Y-m-t'));
         return [$start->format('Y-m-d'), $end->format('Y-m-d')];
     }
+    if ($scope === 'year') {
+        $start = new DateTime($today->format('Y-01-01'));
+        $end = new DateTime($today->format('Y-12-31'));
+        return [$start->format('Y-m-d'), $end->format('Y-m-d')];
+    }
     if ($scope === 'range') {
         return [$startDate, $endDate];
     }
