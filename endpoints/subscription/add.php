@@ -218,6 +218,126 @@ function resizeAndUploadLogo($uploadedFile, $uploadDir, $name, $settings)
     return "";
 }
 
+function getUserHouseholdIds($db, $userId)
+{
+    $householdIds = [];
+    $query = "SELECT id FROM household WHERE user_id = :userId";
+    $stmt = $db->prepare($query);
+    $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+    $result = $stmt->execute();
+    while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
+        $householdIds[intval($row['id'])] = true;
+    }
+
+    return $householdIds;
+}
+
+function toCents($amount)
+{
+    return (int) round(floatval($amount) * 100);
+}
+
+function fromCents($cents)
+{
+    return round($cents / 100, 2);
+}
+
+function parseAndDistributeParticipants($participantsPayload, $price, $validHouseholdIds)
+{
+    $decoded = json_decode($participantsPayload, true);
+    if (!is_array($decoded) || count($decoded) === 0) {
+        return ['ok' => false, 'message' => 'Please select at least one participant.'];
+    }
+
+    $participants = [];
+    foreach ($decoded as $rawParticipant) {
+        $householdId = isset($rawParticipant['household_id']) ? intval($rawParticipant['household_id']) : 0;
+        if ($householdId <= 0 || !isset($validHouseholdIds[$householdId])) {
+            return ['ok' => false, 'message' => 'Invalid participant selected.'];
+        }
+
+        if (isset($participants[$householdId])) {
+            return ['ok' => false, 'message' => 'Duplicate participant selected.'];
+        }
+
+        $isManual = !empty($rawParticipant['is_manual']);
+        $manualCents = null;
+
+        if ($isManual) {
+            if (!isset($rawParticipant['amount']) || $rawParticipant['amount'] === '') {
+                return ['ok' => false, 'message' => 'Manual participant amount is required.'];
+            }
+
+            if (!is_numeric($rawParticipant['amount'])) {
+                return ['ok' => false, 'message' => 'Manual participant amount is invalid.'];
+            }
+
+            $manualCents = toCents($rawParticipant['amount']);
+            if ($manualCents < 0) {
+                return ['ok' => false, 'message' => 'Manual participant amount cannot be negative.'];
+            }
+        }
+
+        $participants[$householdId] = [
+            'household_id' => $householdId,
+            'is_manual' => $isManual ? 1 : 0,
+            'amount_cents' => $manualCents
+        ];
+    }
+
+    $totalCents = toCents($price);
+    if ($totalCents < 0) {
+        return ['ok' => false, 'message' => 'Subscription price cannot be negative.'];
+    }
+
+    $manualSumCents = 0;
+    $autoParticipantIds = [];
+    foreach ($participants as $participant) {
+        if ($participant['is_manual'] === 1) {
+            $manualSumCents += $participant['amount_cents'];
+        } else {
+            $autoParticipantIds[] = $participant['household_id'];
+        }
+    }
+
+    if ($manualSumCents > $totalCents) {
+        return ['ok' => false, 'message' => 'Manual amounts exceed the total subscription price.'];
+    }
+
+    $remainingCents = $totalCents - $manualSumCents;
+    $autoCount = count($autoParticipantIds);
+
+    if ($autoCount === 0 && $remainingCents !== 0) {
+        return ['ok' => false, 'message' => 'Participant amounts must match the total subscription price.'];
+    }
+
+    if ($autoCount > 0) {
+        $baseCents = intdiv($remainingCents, $autoCount);
+        $remainderCents = $remainingCents % $autoCount;
+
+        foreach ($autoParticipantIds as $idx => $participantId) {
+            $participants[$participantId]['amount_cents'] = $baseCents + ($idx < $remainderCents ? 1 : 0);
+        }
+    }
+
+    $finalSum = 0;
+    $finalParticipants = [];
+    foreach ($participants as $participant) {
+        $finalSum += $participant['amount_cents'];
+        $finalParticipants[] = [
+            'household_id' => $participant['household_id'],
+            'amount' => fromCents($participant['amount_cents']),
+            'is_manual' => $participant['is_manual']
+        ];
+    }
+
+    if ($finalSum !== $totalCents) {
+        return ['ok' => false, 'message' => 'Participant amounts must match the total subscription price.'];
+    }
+
+    return ['ok' => true, 'participants' => $finalParticipants];
+}
+
 $isEdit = isset($_POST['id']) && $_POST['id'] != "";
 $name = validate($_POST["name"]);
 $price = $_POST['price'];
@@ -240,9 +360,32 @@ $notifyDaysBefore = $_POST['notify_days_before'];
 $inactive = isset($_POST['inactive']) ? true : false;
 $cancellationDate = $_POST['cancellation_date'] ?? null;
 $replacementSubscriptionId = $_POST['replacement_subscription_id'];
+$participantsPayload = $_POST['participants_payload'] ?? '';
 
 if ($replacementSubscriptionId == 0 || $inactive == 0) {
     $replacementSubscriptionId = null;
+}
+
+$participantsTableExists = $db
+    ->query("SELECT name FROM sqlite_master WHERE type='table' AND name='subscription_participants'")
+    ->fetchArray(SQLITE3_ASSOC) !== false;
+
+if (!$participantsTableExists) {
+    echo json_encode([
+        'status' => 'Error',
+        'message' => 'Database migration missing. Please run database migrations first.'
+    ]);
+    exit();
+}
+
+$validHouseholdIds = getUserHouseholdIds($db, $userId);
+$parsedParticipants = parseAndDistributeParticipants($participantsPayload, $price, $validHouseholdIds);
+if (!$parsedParticipants['ok']) {
+    echo json_encode([
+        'status' => 'Error',
+        'message' => $parsedParticipants['message']
+    ]);
+    exit();
 }
 
 if ($logoUrl !== "") {
@@ -304,6 +447,7 @@ if (!$isEdit) {
     $sql .= " WHERE id = :id AND user_id = :userId";
 }
 
+$db->exec('BEGIN');
 $stmt = $db->prepare($sql);
 $stmt->bindParam(':name', $name, SQLITE3_TEXT);
 if ($logo != "") {
@@ -332,6 +476,31 @@ $stmt->bindParam(':userId', $userId, SQLITE3_INTEGER);
 $stmt->bindParam(':replacement_subscription_id', $replacementSubscriptionId, SQLITE3_INTEGER);
 
 if ($stmt->execute()) {
+    $subscriptionId = $isEdit ? intval($id) : intval($db->lastInsertRowID());
+    $deleteParticipantsStmt = $db->prepare("DELETE FROM subscription_participants WHERE subscription_id = :subscriptionId");
+    $deleteParticipantsStmt->bindValue(':subscriptionId', $subscriptionId, SQLITE3_INTEGER);
+    $deleteParticipantsStmt->execute();
+
+    $insertParticipantSql = "INSERT INTO subscription_participants (subscription_id, household_id, amount, is_manual)
+                             VALUES (:subscriptionId, :householdId, :amount, :isManual)";
+    $insertParticipantStmt = $db->prepare($insertParticipantSql);
+
+    foreach ($parsedParticipants['participants'] as $participant) {
+        $insertParticipantStmt->bindValue(':subscriptionId', $subscriptionId, SQLITE3_INTEGER);
+        $insertParticipantStmt->bindValue(':householdId', $participant['household_id'], SQLITE3_INTEGER);
+        $insertParticipantStmt->bindValue(':amount', $participant['amount'], SQLITE3_FLOAT);
+        $insertParticipantStmt->bindValue(':isManual', $participant['is_manual'], SQLITE3_INTEGER);
+        if (!$insertParticipantStmt->execute()) {
+            $db->exec('ROLLBACK');
+            echo json_encode([
+                'status' => 'Error',
+                'message' => translate('error', $i18n) . ': ' . $db->lastErrorMsg()
+            ]);
+            exit();
+        }
+    }
+
+    $db->exec('COMMIT');
     $success['status'] = "Success";
     $text = $isEdit ? "updated" : "added";
     $success['message'] = translate('subscription_' . $text . '_successfuly', $i18n);
@@ -342,6 +511,7 @@ if ($stmt->execute()) {
     echo json_encode($success);
     exit();
 } else {
+    $db->exec('ROLLBACK');
     echo translate('error', $i18n) . ": " . $db->lastErrorMsg();
 }
 $db->close();

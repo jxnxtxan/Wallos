@@ -12,7 +12,9 @@ PGID=${PGID:-82}
 # Change the www-data user id and group id to be the user-specified ones
 groupmod -o -g "$PGID" www-data
 usermod -o -u "$PUID" www-data
-chown -R www-data:www-data /var/www/html
+# In local dev with bind mounts, some files (e.g. .git pack files) can be non-chownable.
+# Don't fail startup for those.
+chown -R www-data:www-data /var/www/html || true
 chown -R www-data:www-data /tmp
 chmod -R 770 /tmp
 

@@ -43,10 +43,38 @@ $cloneStmt->bindValue(':cancellation_date', $subscriptionToClone['cancellation_d
 $cloneStmt->bindValue(':replacement_subscription_id', $subscriptionToClone['replacement_subscription_id'], SQLITE3_INTEGER);
 
 if ($cloneStmt->execute()) {
+    $newSubscriptionId = $db->lastInsertRowID();
+
+    $participantsTableExists = $db
+        ->query("SELECT name FROM sqlite_master WHERE type='table' AND name='subscription_participants'")
+        ->fetchArray(SQLITE3_ASSOC) !== false;
+
+    if ($participantsTableExists) {
+        $participantsQuery = "SELECT sp.household_id, sp.amount, sp.is_manual
+                              FROM subscription_participants sp
+                              INNER JOIN household h ON h.id = sp.household_id
+                              WHERE sp.subscription_id = :subscriptionId AND h.user_id = :userId";
+        $participantsStmt = $db->prepare($participantsQuery);
+        $participantsStmt->bindValue(':subscriptionId', $subscriptionId, SQLITE3_INTEGER);
+        $participantsStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
+        $participantsResult = $participantsStmt->execute();
+
+        $insertParticipantStmt = $db->prepare("INSERT INTO subscription_participants (subscription_id, household_id, amount, is_manual)
+                                               VALUES (:subscriptionId, :householdId, :amount, :isManual)");
+
+        while ($participant = $participantsResult->fetchArray(SQLITE3_ASSOC)) {
+            $insertParticipantStmt->bindValue(':subscriptionId', $newSubscriptionId, SQLITE3_INTEGER);
+            $insertParticipantStmt->bindValue(':householdId', intval($participant['household_id']), SQLITE3_INTEGER);
+            $insertParticipantStmt->bindValue(':amount', floatval($participant['amount']), SQLITE3_FLOAT);
+            $insertParticipantStmt->bindValue(':isManual', intval($participant['is_manual']), SQLITE3_INTEGER);
+            $insertParticipantStmt->execute();
+        }
+    }
+
     $response = [
         "success" => true,
         "message" => translate('success', $i18n),
-        "id" => $db->lastInsertRowID()
+        "id" => $newSubscriptionId
     ];
     echo json_encode($response);
 } else {

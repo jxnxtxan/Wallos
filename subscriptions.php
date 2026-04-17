@@ -311,7 +311,14 @@ $headerClass = count($subscriptions) > 0 ? "main-actions" : "main-actions hidden
         foreach ($currencies as $currency) {
           $selected = ($currency['id'] == $main_currency) ? 'selected' : '';
           ?>
-          <option value="<?= $currency['id'] ?>" <?= $selected ?>><?= $currency['name'] ?></option>
+          <option
+            value="<?= $currency['id'] ?>"
+            data-symbol="<?= htmlspecialchars($currency['symbol']) ?>"
+            data-code="<?= htmlspecialchars($currency['code']) ?>"
+            <?= $selected ?>
+          >
+            <?= $currency['name'] ?>
+          </option>
           <?php
         }
         ?>
@@ -412,6 +419,28 @@ $headerClass = count($subscriptions) > 0 ? "main-actions" : "main-actions hidden
           </select>
         </div>
       </div>
+    </div>
+
+    <div class="form-group">
+      <label><?= translate('members', $i18n) ?> (<?= translate('price_split', $i18n) ?>)</label>
+      <input type="hidden" id="participants_payload" name="participants_payload">
+      <div id="participants-list" class="participants-list">
+        <?php foreach ($members as $member): ?>
+          <div class="participant-row" data-household-id="<?= $member['id'] ?>">
+            <div class="participant-line">
+              <div class="participant-controls">
+                <input type="checkbox" class="participant-selected" id="participant-<?= $member['id'] ?>">
+                <label for="participant-<?= $member['id'] ?>" class="grow"><?= htmlspecialchars($member['name']) ?></label>
+                <input type="checkbox" class="participant-manual" id="participant-manual-<?= $member['id'] ?>">
+                <label for="participant-manual-<?= $member['id'] ?>"><?= translate('manual', $i18n) ?></label>
+                <input type="number" step="0.01" min="0" class="participant-amount" placeholder="0.00" disabled>
+              </div>
+              <span class="participant-effective-amount"></span>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      </div>
+      <small id="participants-summary"></small>
     </div>
 
     <div class="form-group">
