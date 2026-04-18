@@ -110,7 +110,7 @@ function buildLedgerData($db, $userId, $scope, $startDate, $endDate)
     $mainCurrencySymbol = $currencyRow ? $currencyRow['symbol'] : '';
 
     $members = [];
-    $memberStmt = $db->prepare("SELECT id, name FROM household WHERE user_id = :userId");
+    $memberStmt = $db->prepare("SELECT id, name FROM household WHERE user_id = :userId ORDER BY name COLLATE NOCASE ASC");
     $memberStmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
     $memberResult = $memberStmt->execute();
     while ($row = $memberResult->fetchArray(SQLITE3_ASSOC)) {

@@ -212,7 +212,9 @@ OIDC can be enabled on the Admin page and can be used with providers that suppor
 
 ## API Documentation
 
-Wallos provides a comprehensive API that allows you to interact with the application programmatically. The API documentation is available at [https://api.wallosapp.com/](https://api.wallosapp.com/).
+Wallos provides a comprehensive API that allows you to interact with the application programmatically. Public reference for the hosted product is at [https://api.wallosapp.com/](https://api.wallosapp.com/).
+
+For **self-hosted** installs, JSON endpoints live under the `api/` directory (relative to the web root). Each PHP file documents its parameters and response shape in a comment at the top of the file. **Income management** and **per-person ledger** (subscription share vs. income) are covered in [docs/API.md](docs/API.md), including `api/income/get_income.php`, `api/income/add_income.php`, `api/income/delete_income.php`, and `api/ledger/get_ledger.php`.
 
 ## Contributing
 
