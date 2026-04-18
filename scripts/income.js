@@ -59,6 +59,12 @@ function openIncomeForEdit(item, type) {
 
   document.querySelector("#income-form-title").textContent = translate("edit_income");
   toggleIncomeFields();
+
+  const formSection = document.querySelector("#income-form").closest(".box");
+  if (formSection) {
+    formSection.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  document.querySelector("#income-amount").focus({ preventScroll: true });
 }
 
 function renderIncomeRows(entries, recurring) {
