@@ -1,6 +1,9 @@
 # Exclude .vscode directory
 .vscode/
 
+# Image exports must not be part of the build context (would bloat COPY . .)
+docker-image-export/
+
 # Exclude .git directory
 .git/
 .github/

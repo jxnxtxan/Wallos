@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+* extend programmatic JSON API with income (Einnahmen) and household ledger (Personenabrechnung) endpoints; see `docs/API.md`.
+
 ## [4.8.0](https://github.com/ellite/Wallos/compare/v4.7.3...v4.8.0) (2026-03-23)
 
 

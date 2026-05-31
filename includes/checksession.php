@@ -26,14 +26,13 @@ if (isset($_GET['code']) && isset($_GET['state'])) {
         $stmt->bindValue(':username', $username, SQLITE3_TEXT);
         $result = $stmt->execute();
         $userData = $result->fetchArray(SQLITE3_ASSOC);
-        $userId = $userData['id'];
-
         if ($userData === false) {
             header('Location: logout.php');
             exit();
-        } else {
-            $_SESSION['userId'] = $userData['id'];
         }
+
+        $userId = $userData['id'];
+        $_SESSION['userId'] = $userData['id'];
 
         if ($userData['avatar'] == "") {
             $userData['avatar'] = "0";
@@ -67,8 +66,8 @@ if (isset($_GET['code']) && isset($_GET['state'])) {
 
                 $adminQuery = "SELECT login_disabled FROM admin";
                 $adminResult = $db->query($adminQuery);
-                $adminRow = $adminResult->fetchArray(SQLITE3_ASSOC);
-                if ($adminRow['login_disabled'] == 1) {
+                $adminRow = $adminResult ? $adminResult->fetchArray(SQLITE3_ASSOC) : false;
+                if ($adminRow !== false && isset($adminRow['login_disabled']) && $adminRow['login_disabled'] == 1) {
                     $sql = "SELECT * FROM login_tokens WHERE user_id = :userId";
                     $stmt = $db->prepare($sql);
                     $stmt->bindParam(':userId', $userId, SQLITE3_TEXT);

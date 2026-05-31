@@ -1,3 +1,4 @@
+docker-image-export/
 /db/*
 !/db/wallos.empty.db
 /images/uploads/logos/*
@@ -5,3 +6,4 @@
 .DS_Store
 .idea/
 .vscode/
+.cursor/

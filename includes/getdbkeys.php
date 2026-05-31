@@ -11,7 +11,7 @@
     }
 
     $members = array();
-    $query = "SELECT * FROM household WHERE user_id = :userId";
+    $query = "SELECT * FROM household WHERE user_id = :userId ORDER BY name COLLATE NOCASE ASC";
     $stmt = $db->prepare($query);
     $stmt->bindValue(':userId', $userId, SQLITE3_INTEGER);
     $result = $stmt->execute();

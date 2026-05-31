@@ -190,6 +190,12 @@ $mobileNavigation = $settings['mobile_nav'] ? "mobile-navigation" : "";
             <a href="stats.php" class="mobileNavigationHideOnMobile">
               <?php include "images/siteicons/svg/mobile-menu/statistics.php"; ?>
               <?= translate('stats', $i18n) ?></a>
+            <a href="income.php" class="mobileNavigationHideOnMobile">
+              <?php include "images/siteicons/svg/mobile-menu/statistics.php"; ?>
+              <?= translate('income_management', $i18n) ?></a>
+            <a href="ledger.php" class="mobileNavigationHideOnMobile">
+              <?php include "images/siteicons/svg/mobile-menu/statistics.php"; ?>
+              <?= translate('person_ledger', $i18n) ?></a>
             <a href="settings.php" class="mobileNavigationHideOnMobile">
               <?php include "images/siteicons/svg/mobile-menu/settings.php"; ?>
               <?= translate('settings', $i18n) ?></a>
@@ -228,6 +234,8 @@ $mobileNavigation = $settings['mobile_nav'] ? "mobile-navigation" : "";
   $subscriptionsClass = $page === 'subscriptions.php' ? 'active' : '';
   $calendarClass = $page === 'calendar.php' ? 'active' : '';
   $statsClass = $page === 'stats.php' ? 'active' : '';
+  $incomeClass = $page === 'income.php' ? 'active' : '';
+  $ledgerClass = $page === 'ledger.php' ? 'active' : '';
   $settingsClass = $page === 'settings.php' ? 'active' : '';
   $profileClass = $page === 'profile.php' ? 'active' : '';
   ?>
@@ -251,6 +259,14 @@ $mobileNavigation = $settings['mobile_nav'] ? "mobile-navigation" : "";
         <a href="stats.php" class="nav-link <?= $statsClass ?>" title="<?= translate('stats', $i18n) ?>">
           <?php include "images/siteicons/svg/mobile-menu/statistics.php"; ?>
           <?= translate('stats', $i18n) ?>
+        </a>
+        <a href="income.php" class="nav-link <?= $incomeClass ?>" title="<?= translate('income_management', $i18n) ?>">
+          <?php include "images/siteicons/svg/mobile-menu/statistics.php"; ?>
+          <?= translate('income', $i18n) ?>
+        </a>
+        <a href="ledger.php" class="nav-link <?= $ledgerClass ?>" title="<?= translate('person_ledger', $i18n) ?>">
+          <?php include "images/siteicons/svg/mobile-menu/statistics.php"; ?>
+          <?= translate('ledger', $i18n) ?>
         </a>
         <a href="settings.php" class="nav-link <?= $settingsClass ?>" title="<?= translate('settings', $i18n) ?>">
           <?php include "images/siteicons/svg/mobile-menu/settings.php"; ?>

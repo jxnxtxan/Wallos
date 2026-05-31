@@ -19,6 +19,232 @@ function toggleNotificationDays() {
   notifyDaysBefore.disabled = !notifyCheckbox.checked;
 }
 
+function getParticipantRows() {
+  return Array.from(document.querySelectorAll(".participant-row"));
+}
+
+function toCents(amount) {
+  return Math.round(Number(amount || 0) * 100);
+}
+
+function fromCents(cents) {
+  return (cents / 100).toFixed(2);
+}
+
+function getSelectedCurrencyLabel() {
+  const currencySelect = document.querySelector("#currency");
+  if (!currencySelect) {
+    return "";
+  }
+  const selectedOption = currencySelect.options[currencySelect.selectedIndex];
+  if (!selectedOption) {
+    return "";
+  }
+
+  const symbol = selectedOption.dataset.symbol || "";
+  const code = selectedOption.dataset.code || "";
+
+  if (symbol && symbol.trim().length > 0) {
+    return symbol;
+  }
+  if (code && code.trim().length > 0) {
+    return code;
+  }
+
+  return "";
+}
+
+function formatAmountWithCurrency(cents) {
+  const amount = fromCents(cents);
+  const currencyLabel = getSelectedCurrencyLabel();
+  return currencyLabel ? `${amount} ${currencyLabel}` : amount;
+}
+
+function getSelectedParticipants() {
+  return getParticipantRows()
+    .filter((row) => row.querySelector(".participant-selected").checked)
+    .map((row) => {
+      const householdId = Number(row.dataset.householdId);
+      const manualCheckbox = row.querySelector(".participant-manual");
+      const amountInput = row.querySelector(".participant-amount");
+      return {
+        household_id: householdId,
+        is_manual: manualCheckbox.checked ? 1 : 0,
+        amount: amountInput.value,
+        row
+      };
+    });
+}
+
+function updateParticipantsPayload(participants) {
+  const payloadInput = document.querySelector("#participants_payload");
+  payloadInput.value = JSON.stringify(
+    participants.map((participant) => ({
+      household_id: participant.household_id,
+      is_manual: participant.is_manual,
+      amount: participant.is_manual ? participant.amount : null
+    }))
+  );
+}
+
+function updateParticipantsUiState() {
+  const rows = getParticipantRows();
+  rows.forEach((row) => {
+    const isSelected = row.querySelector(".participant-selected").checked;
+    const manualCheckbox = row.querySelector(".participant-manual");
+    const amountInput = row.querySelector(".participant-amount");
+    const effectiveAmountLabel = row.querySelector(".participant-effective-amount");
+
+    manualCheckbox.disabled = !isSelected;
+    if (!isSelected) {
+      manualCheckbox.checked = false;
+      amountInput.value = "";
+      amountInput.disabled = true;
+      effectiveAmountLabel.textContent = "";
+      row.classList.remove("is-manual");
+      return;
+    }
+
+    amountInput.disabled = !manualCheckbox.checked;
+    if (!manualCheckbox.checked) {
+      amountInput.value = "";
+    }
+  });
+}
+
+function validateParticipantsAndRenderSummary() {
+  updateParticipantsUiState();
+
+  const summary = document.querySelector("#participants-summary");
+  const totalPrice = Number(document.querySelector("#price")?.value || 0);
+  const totalCents = toCents(totalPrice);
+  const selectedParticipants = getSelectedParticipants();
+
+  if (selectedParticipants.length === 0) {
+    summary.textContent = "Select at least one participant.";
+    return { valid: false, message: "Select at least one participant.", participants: [] };
+  }
+
+  if (totalCents < 0) {
+    summary.textContent = "Total price cannot be negative.";
+    return { valid: false, message: "Total price cannot be negative.", participants: [] };
+  }
+
+  let manualCents = 0;
+  const autoParticipants = [];
+
+  for (const participant of selectedParticipants) {
+    if (participant.is_manual) {
+      const amountValue = participant.amount;
+      if (amountValue === "" || Number.isNaN(Number(amountValue))) {
+        summary.textContent = "Please provide all manual participant amounts.";
+        return { valid: false, message: "Please provide all manual participant amounts.", participants: [] };
+      }
+      const amountCents = toCents(amountValue);
+      if (amountCents < 0) {
+        summary.textContent = "Manual participant amounts cannot be negative.";
+        return { valid: false, message: "Manual participant amounts cannot be negative.", participants: [] };
+      }
+      manualCents += amountCents;
+      participant.computedAmountCents = amountCents;
+    } else {
+      autoParticipants.push(participant);
+    }
+  }
+
+  if (manualCents > totalCents) {
+    summary.textContent = "Manual amounts exceed total price.";
+    return { valid: false, message: "Manual amounts exceed total price.", participants: [] };
+  }
+
+  const remainingCents = totalCents - manualCents;
+  if (autoParticipants.length === 0 && remainingCents !== 0) {
+    summary.textContent = "Participant amounts must match total price.";
+    return { valid: false, message: "Participant amounts must match total price.", participants: [] };
+  }
+
+  if (autoParticipants.length > 0) {
+    const base = Math.floor(remainingCents / autoParticipants.length);
+    const remainder = remainingCents % autoParticipants.length;
+    autoParticipants.forEach((participant, index) => {
+      participant.computedAmountCents = base + (index < remainder ? 1 : 0);
+    });
+  }
+
+  let finalSum = 0;
+  selectedParticipants.forEach((participant) => {
+    finalSum += participant.computedAmountCents;
+    const effectiveAmountLabel = participant.row.querySelector(".participant-effective-amount");
+    effectiveAmountLabel.textContent = formatAmountWithCurrency(participant.computedAmountCents);
+    if (participant.is_manual) {
+      participant.row.classList.add("is-manual");
+    } else {
+      participant.row.classList.remove("is-manual");
+    }
+  });
+
+  if (finalSum !== totalCents) {
+    summary.textContent = "Participant amounts must match total price.";
+    return { valid: false, message: "Participant amounts must match total price.", participants: [] };
+  }
+
+  summary.textContent = `Total: ${formatAmountWithCurrency(totalCents)} | Manual: ${formatAmountWithCurrency(manualCents)} | Remaining: ${formatAmountWithCurrency(remainingCents)}`;
+
+  selectedParticipants.forEach((participant) => {
+    participant.amount = fromCents(participant.computedAmountCents);
+  });
+
+  return { valid: true, participants: selectedParticipants };
+}
+
+function resetParticipantsToDefault() {
+  const payerSelect = document.querySelector("#payer_user");
+  const payerId = Number(payerSelect.value);
+  getParticipantRows().forEach((row) => {
+    const participantCheckbox = row.querySelector(".participant-selected");
+    const participantManual = row.querySelector(".participant-manual");
+    const participantAmount = row.querySelector(".participant-amount");
+    const isPayer = Number(row.dataset.householdId) === payerId;
+    participantCheckbox.checked = isPayer;
+    participantManual.checked = false;
+    participantAmount.value = "";
+  });
+  validateParticipantsAndRenderSummary();
+}
+
+function fillParticipantsFromSubscription(subscription) {
+  const existingParticipants = Array.isArray(subscription.participants) ? subscription.participants : [];
+  const participantsById = new Map(existingParticipants.map((p) => [Number(p.household_id), p]));
+
+  getParticipantRows().forEach((row) => {
+    const id = Number(row.dataset.householdId);
+    const selectedCheckbox = row.querySelector(".participant-selected");
+    const manualCheckbox = row.querySelector(".participant-manual");
+    const amountInput = row.querySelector(".participant-amount");
+    const participant = participantsById.get(id);
+
+    if (participant) {
+      selectedCheckbox.checked = true;
+      manualCheckbox.checked = Number(participant.is_manual) === 1;
+      amountInput.value = manualCheckbox.checked ? Number(participant.amount).toFixed(2) : "";
+    } else {
+      selectedCheckbox.checked = false;
+      manualCheckbox.checked = false;
+      amountInput.value = "";
+    }
+  });
+
+  if (existingParticipants.length === 0) {
+    const payerId = Number(subscription.payer_user_id);
+    const payerRow = getParticipantRows().find((row) => Number(row.dataset.householdId) === payerId);
+    if (payerRow) {
+      payerRow.querySelector(".participant-selected").checked = true;
+    }
+  }
+
+  validateParticipantsAndRenderSummary();
+}
+
 function resetForm() {
   const id = document.querySelector("#id");
   id.value = "";
@@ -45,6 +271,7 @@ function resetForm() {
   replacementSubscription.classList.add("hide");
   const form = document.querySelector("#subs-form");
   form.reset();
+  resetParticipantsToDefault();
   closeLogoSearch();
   const deleteButton = document.querySelector("#deletesub");
   deleteButton.style = 'display: none';
@@ -81,6 +308,7 @@ function fillEditFormFields(subscription) {
   categorySelect.value = subscription.category_id;
   const payerSelect = document.querySelector("#payer_user");
   payerSelect.value = subscription.payer_user_id;
+  fillParticipantsFromSubscription(subscription);
 
   const startDate = document.querySelector("#start_date");
   startDate.value = subscription.start_date;
@@ -506,8 +734,45 @@ document.addEventListener('DOMContentLoaded', function () {
   const submitButton = document.querySelector("#save-button");
   const endpoint = "endpoints/subscription/add.php";
 
+  getParticipantRows().forEach((row) => {
+    row.querySelector(".participant-selected").addEventListener("change", validateParticipantsAndRenderSummary);
+    row.querySelector(".participant-manual").addEventListener("change", validateParticipantsAndRenderSummary);
+    row.querySelector(".participant-amount").addEventListener("input", validateParticipantsAndRenderSummary);
+  });
+
+  const priceInput = document.querySelector("#price");
+  if (priceInput) {
+    priceInput.addEventListener("input", validateParticipantsAndRenderSummary);
+  }
+
+  const currencySelect = document.querySelector("#currency");
+  if (currencySelect) {
+    currencySelect.addEventListener("change", validateParticipantsAndRenderSummary);
+  }
+
+  const payerSelect = document.querySelector("#payer_user");
+  if (payerSelect) {
+    payerSelect.addEventListener("change", () => {
+      const selectedPayerId = Number(payerSelect.value);
+      const payerRow = getParticipantRows().find((row) => Number(row.dataset.householdId) === selectedPayerId);
+      if (payerRow) {
+        payerRow.querySelector(".participant-selected").checked = true;
+      }
+      validateParticipantsAndRenderSummary();
+    });
+  }
+
+  resetParticipantsToDefault();
+
   subscriptionForm.addEventListener("submit", function (e) {
     e.preventDefault();
+
+    const validation = validateParticipantsAndRenderSummary();
+    if (!validation.valid) {
+      showErrorMessage(validation.message);
+      return;
+    }
+    updateParticipantsPayload(validation.participants);
 
     submitButton.disabled = true;
     const formData = new FormData(subscriptionForm);
@@ -784,11 +1049,45 @@ document.addEventListener('click', function (event) {
   }
 });
 
+function ensureOpenMenuInViewport(menuEl) {
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () {
+      const margin = 16;
+      const rect = menuEl.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const vw = window.innerWidth;
+      let dy = 0;
+      let dx = 0;
+      if (rect.bottom > vh - margin) {
+        dy = rect.bottom - (vh - margin);
+      }
+      if (rect.top < margin) {
+        dy += rect.top - margin;
+      }
+      if (rect.right > vw - margin) {
+        dx = rect.right - (vw - margin);
+      }
+      if (rect.left < margin) {
+        dx += rect.left - margin;
+      }
+      if (dx !== 0 || dy !== 0) {
+        window.scrollBy({ left: dx, top: dy, behavior: 'smooth' });
+      }
+    });
+  });
+}
+
 function expandActions(event, subscriptionId) {
   event.stopPropagation();
   event.preventDefault();
   const subscriptionDiv = document.querySelector(`.subscription[data-id="${subscriptionId}"]`);
+  if (!subscriptionDiv) {
+    return;
+  }
   const actions = subscriptionDiv.querySelector('.actions');
+  if (!actions) {
+    return;
+  }
 
   // Close all other open actions
   const allActions = document.querySelectorAll('.actions.is-open');
@@ -804,6 +1103,7 @@ function expandActions(event, subscriptionId) {
   // Update currentActions
   if (actions.classList.contains('is-open')) {
     currentActions = actions;
+    ensureOpenMenuInViewport(actions);
   } else {
     currentActions = null;
   }

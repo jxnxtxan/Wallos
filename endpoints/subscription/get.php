@@ -33,6 +33,30 @@ if (isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true) {
             $subscriptionData['notify_days_before'] = $row['notify_days_before'];
             $subscriptionData['cancellation_date'] = $row['cancellation_date'];
             $subscriptionData['replacement_subscription_id'] = $row['replacement_subscription_id'];
+            $subscriptionData['participants'] = [];
+
+            $participantsTableExists = $db
+                ->query("SELECT name FROM sqlite_master WHERE type='table' AND name='subscription_participants'")
+                ->fetchArray(SQLITE3_ASSOC) !== false;
+
+            if ($participantsTableExists) {
+                $participantsQuery = "SELECT sp.household_id, sp.amount, sp.is_manual
+                                      FROM subscription_participants sp
+                                      INNER JOIN household h ON h.id = sp.household_id
+                                      WHERE sp.subscription_id = :subscriptionId AND h.user_id = :userId";
+                $participantsStmt = $db->prepare($participantsQuery);
+                $participantsStmt->bindParam(':subscriptionId', $subscriptionId, SQLITE3_INTEGER);
+                $participantsStmt->bindParam(':userId', $userId, SQLITE3_INTEGER);
+                $participantsResult = $participantsStmt->execute();
+
+                while ($participant = $participantsResult->fetchArray(SQLITE3_ASSOC)) {
+                    $subscriptionData['participants'][] = [
+                        'household_id' => intval($participant['household_id']),
+                        'amount' => floatval($participant['amount']),
+                        'is_manual' => intval($participant['is_manual'])
+                    ];
+                }
+            }
 
             $subscriptionJson = json_encode($subscriptionData);
             header('Content-Type: application/json');
