@@ -1,0 +1,140 @@
+name: Docker Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      push_image:
+        description: Image nach GHCR pushen
+        type: boolean
+        default: true
+      export_tar:
+        description: amd64-Tar als Workflow-Artefakt erzeugen
+        type: boolean
+        default: true
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  PLATFORMS: linux/amd64
+  LOCAL_IMAGE: wallos:local-amd64
+  TAR_PATH: docker-image-export/wallos-local-amd64.tar
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: App-Version aus includes/version.php
+        id: app_version
+        run: |
+          version=$(sed -n 's/\$version = "\(.*\)";/\1/p' includes/version.php)
+          if [ -z "$version" ]; then
+            echo "::error::Konnte Version in includes/version.php nicht lesen."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: GHCR-Image-Name (lowercase)
+        id: image
+        run: |
+          name="${GITHUB_REPOSITORY,,}"
+          echo "repository=$name" >> "$GITHUB_OUTPUT"
+          echo "ref=${REGISTRY}/${name}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker meta (Registry-Tags)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image.outputs.ref }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ steps.app_version.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ steps.app_version.outputs.version }}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=branch
+            type=ref,event=tag
+            type=ref,event=pr
+            type=sha,prefix=
+
+      - name: Push amd64 image
+        if: >-
+          github.event_name != 'pull_request' &&
+          (
+            github.event_name != 'workflow_dispatch' ||
+            inputs.push_image == true
+          )
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: ${{ env.PLATFORMS }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build amd64 image (PR, ohne Push)
+        if: github.event_name == 'pull_request'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: ${{ env.PLATFORMS }}
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Export amd64 image as tar
+        if: >-
+          (
+            github.event_name == 'workflow_dispatch' &&
+            inputs.export_tar == true
+          ) ||
+          startsWith(github.ref, 'refs/tags/v')
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: ${{ env.PLATFORMS }}
+          push: false
+          tags: ${{ env.LOCAL_IMAGE }}
+          outputs: type=docker,dest=${{ env.TAR_PATH }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Upload amd64 tar artifact
+        if: >-
+          (
+            github.event_name == 'workflow_dispatch' &&
+            inputs.export_tar == true
+          ) ||
+          startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v4
+        with:
+          name: wallos-local-amd64
+          path: ${{ env.TAR_PATH }}
+          if-no-files-found: error
+          retention-days: 30
